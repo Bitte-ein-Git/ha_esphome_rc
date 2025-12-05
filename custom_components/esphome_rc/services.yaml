@@ -1,0 +1,17 @@
+report_code:
+  name: ESPHome-IR-Manager Received Code
+  description: Internal service used by ESPHome IR Manager to report received IR codes to the integration. Not intended to be called manually by users.
+  fields:
+    entity_id:
+      name: Entity
+      description: The remote entity ID associated with the ESPHome device.
+      required: true
+      selector:
+        entity:
+          domain: remote
+    code:
+      name: Code
+      description: The raw IR code received (usually an array of integers formatted as a string).
+      required: true
+      selector:
+        text:

@@ -1,0 +1,110 @@
+name: ›› 🌀 Validate and Release
+
+on:
+  workflow_dispatch:
+
+jobs:
+  validate-hassfest:
+    name: ☑️ Validate with hassfest
+    runs-on: "ubuntu-latest"
+    steps:
+      - name: Checkout code
+        uses: "actions/checkout@v4"
+      - name: Run hassfest validation
+        uses: "home-assistant/actions/hassfest@master"
+
+  validate-hacs:
+    name: ☑️ Validate with HACS
+    runs-on: "ubuntu-latest"
+    steps:
+      - name: Checkout code
+        uses: "actions/checkout@v4"
+      - name: Run HACS validation
+        uses: "hacs/action@main"
+        with:
+          category: "integration"
+          ignore: "brands"
+
+  release:
+    name: ✅ Create Release
+    runs-on: ubuntu-latest
+    needs: [validate-hassfest, validate-hacs]
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/master')
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 
+
+      - name: Install jq
+        run: sudo apt-get install -y jq
+
+      - name: Get version details
+        id: get_version
+        run: |
+          # Get version from manifest
+          VERSION=$(jq -r .version custom_components/esphome_rc/manifest.json)
+          TAG_NAME="v$VERSION"
+          
+          # Set environment variables
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "TAG_NAME=$TAG_NAME" >> $GITHUB_ENV
+          echo "RELEASE_TITLE=v$VERSION" - 𝗱𝗲𝘃>> $GITHUB_ENV
+
+      - name: Check for existing tag
+        id: check_tag
+        run: |
+          # Check if tag exists remotely
+          if git ls-remote --exit-code --tags origin "refs/tags/${{ env.TAG_NAME }}" >/dev/null 2>&1; then
+            echo "Tag ${{ env.TAG_NAME }} already exists. Skipping release."
+            echo "SKIP=true" >> $GITHUB_ENV
+          else
+            echo "Tag ${{ env.TAG_NAME }} does not exist. Proceeding."
+            echo "SKIP=false" >> $GITHUB_ENV
+          fi
+
+      - name: Create and Push Tag
+        if: env.SKIP == 'false'
+        run: |
+          # Configure git user
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          # Create annotated tag
+          git tag -a "${{ env.TAG_NAME }}" -m "${{ env.RELEASE_TITLE }}"
+          
+          # Push the tag
+          git push origin "${{ env.TAG_NAME }}"
+
+      - name: Create Release Body
+        if: env.SKIP == 'false'
+        run: |
+          # Create markdown file for release notes
+          cat << EOF > release_body.md
+          # 🌀 ›› *${{ env.VERSION }}* - 𝗱𝗲𝘃 released! • 🗿
+          EOF
+
+      - name: ZIP Component Dir
+        if: env.SKIP == 'false'
+        run: |
+          # Navigate to component directory
+          cd ${{ github.workspace }}/custom_components/esphome_rc
+          
+          # Create zip archive
+          zip -r esphome_rc.zip ./
+          
+          # Move zip to workspace root
+          mv esphome_rc.zip ${{ github.workspace }}/esphome_rc.zip
+
+      - name: Create Release
+        if: env.SKIP == 'false'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Create GitHub release using the pushed tag
+          gh release create ${{ env.TAG_NAME }} \
+            --title "${{ env.RELEASE_TITLE }}" \
+            --notes-file release_body.md \
+            ${{ github.workspace }}/esphome_rc.zip#esphome_rc.zip

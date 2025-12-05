@@ -1,0 +1,13 @@
+{
+  "domain": "esphome_rc",
+  "name": "🗿• ESPHome IR Manager 🛠️",
+  "codeowners": ["@Bitte-ein-Git", "@elias1731"],
+  "config_flow": true,
+  "documentation": "https://github.com/Bitte-ein-Git/ha_esphome_rc",
+  "integration_type": "device",
+  "iot_class": "local_polling",
+  "issue_tracker": "https://github.com/Bitte-ein-Git/ha_esphome_rc/issues",
+  "loggers": ["custom_components.esphome_rc"],
+  "requirements": [],
+  "version": "1.0.0-dev"
+}

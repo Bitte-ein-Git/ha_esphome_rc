@@ -1,0 +1,98 @@
+{
+    "title": "🗿• ESPHome IR Manager 🛠️",
+    "config": {
+        "step": {
+            "user": {
+                "title": "Setup",
+                "description": "Enter your ESPHome device details.",
+                "data": {
+                    "name": "Hub Name",
+                    "esphome_service": "ESPHome Service (send_raw_command)"
+                }
+            },
+            "yaml_info": {
+                "title": "ESPHome Configuration",
+                "description": "Copy this code into your ESPHome YAML file to enable learning:\n\n```yaml{yaml}```\n\nClick Submit when done."
+            }
+        },
+        "error": {
+            "invalid_service_format": "Service must contain a dot (e.g. esphome.send)"
+        }
+    },
+    "options": {
+        "step": {
+            "manage_subdevices": {
+                "title": "Manage Sub-devices",
+                "menu_options": {
+                    "add_subdevice": "Add Device",
+                    "select_subdevice": "Edit Device",
+                    "show_yaml": "Show ESPHome YAML Configuration"
+                }
+            },
+            "show_yaml": {
+                "title": "ESPHome Configuration",
+                "description": "Copy this code to your ESPHome device:\n\n```yaml{yaml}```"
+            },
+            "add_subdevice": {
+                "title": "Add Device",
+                "data": {
+                    "subdevice_name": "Name (e.g. TV)"
+                }
+            },
+            "select_subdevice": {
+                "title": "Select Device",
+                "data": {
+                    "device": "Device"
+                }
+            },
+            "device_actions": {
+                "title": "Actions for {device_name}",
+                "menu_options": {
+                    "learn_command": "Learn Command (Single)",
+                    "learn_multiple": "Learn Multiple Commands",
+                    "delete_command": "Delete Commands",
+                    "delete_subdevice": "Delete Device"
+                }
+            },
+            "learn_command": {
+                "title": "Learn",
+                "description": "Enter command name (e.g. Power).",
+                "data": {
+                    "command_name": "Command Name"
+                }
+            },
+            "learn_wait": {
+                "title": "Ready to receive...",
+                "description": "Click SUBMIT. Then aim at the ESP and press {command} on your remote (Timeout: 20s)."
+            },
+            "learn_multiple": {
+                "title": "Learn Multiple",
+                "description": "Enter name for the NEXT command (or close to finish).",
+                "data": {
+                    "command_name": "Command Name"
+                }
+            },
+            "learn_multiple_wait": {
+                "title": "Ready to receive...",
+                "description": "Press {command} on remote now. (Window reopens automatically after success)."
+            },
+            "delete_command": {
+                "title": "Delete",
+                "data": {
+                    "commands": "Select commands"
+                }
+            },
+            "delete_subdevice": {
+                "title": "Delete",
+                "description": "Really delete {device_name}?"
+            }
+        },
+        "error": {
+            "device_exists": "Name already exists.",
+            "learn_failed": "No signal received or error."
+        },
+        "abort": {
+            "no_devices": "No devices found."
+        }
+    }
+}
