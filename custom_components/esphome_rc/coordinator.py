@@ -1,4 +1,4 @@
-"""Coordinator for 🗿• ESPHome IR Manager 🛠️."""
+"""Coordinator for 🗿• ESPHome IR Manager 🛠️"""
 import logging
 import asyncio
 import json
@@ -94,7 +94,6 @@ class ESPHomeRCCoordinator:
         for device, commands in self._codes.items():
             for cmd_name, cmd_code in commands.items():
                 stored_str = str(cmd_code).strip()
-                # Normalize stored too
                 try:
                     if stored_str.startswith("["):
                         stored_str = json.dumps(json.loads(stored_str))
@@ -104,10 +103,12 @@ class ESPHomeRCCoordinator:
                 if stored_str == search_str:
                     return f"{device}: {cmd_name}"
 
-        # 3. Phase 2: Find BEST fuzzy match (lowest error)
+        # 3. Phase 2: Find BEST fuzzy match
+        # Logic: Received code must contain the stored code (prefix match).
+        # This handles cases where received code has trailing garbage/repeats.
         if received_list:
             best_match_name = None
-            lowest_error_avg = 0.25 # Start with max tolerance (25%)
+            lowest_error_avg = 0.30 # Allow up to 30% average deviation
 
             for device, commands in self._codes.items():
                 for cmd_name, cmd_code in commands.items():
@@ -119,28 +120,35 @@ class ESPHomeRCCoordinator:
                             stored_list = json.loads(s_code)
                     except:
                         continue
-
-                    if stored_list and len(received_list) == len(stored_list):
-                        # Calculate error
+                    
+                    # We can only match if we received at least as much data as stored
+                    if stored_list and len(received_list) >= len(stored_list):
+                        
+                        # Slice received list to match length of stored command (ignore trailing noise)
+                        comparison_window = received_list[:len(stored_list)]
+                        
                         total_error = 0
                         valid_candidate = True
                         
-                        for i, r_val in enumerate(received_list):
+                        for i, r_val in enumerate(comparison_window):
                             s_val = stored_list[i]
-                            # Handle zero division / exact zero
-                            if s_val == 0:
-                                if r_val != 0: 
-                                    valid_candidate = False; break
-                                continue
+                            
+                            # Avoid div/0
+                            if s_val == 0: s_val = 1
+                            if r_val == 0: r_val = 1
                             
                             diff = abs(r_val - s_val) / abs(s_val)
-                            if diff > 0.25: # Reject if any single pulse is too far off
+                            
+                            # Loose cap for single pulse (60%) to handle glitches, 
+                            # relying on low average to filter bad matches.
+                            if diff > 0.6: 
                                 valid_candidate = False; break
+                            
                             total_error += diff
                         
                         if valid_candidate:
-                            avg_error = total_error / len(received_list)
-                            # If this match is better than previous best, keep it
+                            avg_error = total_error / len(stored_list)
+                            # Update best match if this is closer
                             if avg_error < lowest_error_avg:
                                 lowest_error_avg = avg_error
                                 best_match_name = f"{device}: {cmd_name}"
@@ -148,8 +156,11 @@ class ESPHomeRCCoordinator:
             if best_match_name:
                 return best_match_name
 
-        # No match found
-        return str(code)
+        # No match found, return raw (truncated if too long for UI)
+        raw_str = str(code)
+        if len(raw_str) > 250:
+             return "Unknown (Code too long)"
+        return raw_str
 
     # --- Inbound Data (From ESPHome) ---
 
@@ -170,8 +181,8 @@ class ESPHomeRCCoordinator:
         if self._learn_future and not self._learn_future.done():
             self._learn_future.set_result(code)
             
-        # Reset after 5s
-        self._reset_timer_handle = self.hass.loop.call_later(5, self._reset_sensor_state)
+        # Reset after 1s (fast reset for automation triggers)
+        self._reset_timer_handle = self.hass.loop.call_later(1.0, self._reset_sensor_state)
 
     @callback
     def _reset_sensor_state(self):
@@ -207,7 +218,6 @@ class ESPHomeRCCoordinator:
             dev_reg = dr.async_get(self.hass)
             
             # Find the Device Entry
-            # Identifier defined in button.py: (DOMAIN, f"{self.entry.entry_id}_{name}")
             device_identifier = (DOMAIN, f"{self.entry.entry_id}_{name}")
             device = dev_reg.async_get_device(identifiers={device_identifier})
             
@@ -226,7 +236,7 @@ class ESPHomeRCCoordinator:
                 dev_reg.async_remove_device(device.id)
                 _LOGGER.debug(f"Removed device and entities for {name}")
             else:
-                # Fallback: Try to clean up by unique_id if device wasn't found (legacy/orphan check)
+                # Fallback clean up
                 entries_to_remove = []
                 prefix = f"{self.entry.entry_id}_{name}_"
                 for entity in ent_reg.entities.values():

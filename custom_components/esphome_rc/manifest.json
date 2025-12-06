@@ -9,5 +9,5 @@
   "issue_tracker": "https://github.com/Bitte-ein-Git/ha_esphome_rc/issues",
   "loggers": ["custom_components.esphome_rc"],
   "requirements": [],
-  "version": "1.0.0-dev"
+  "version": "1.0.1"
 }
